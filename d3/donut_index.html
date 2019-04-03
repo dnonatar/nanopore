@@ -1,0 +1,61 @@
+<head>
+		<script src="https://d3js.org/d3.v4.min.js"></script>
+		<title> Donut Chart </title>
+		<link rel="stylesheet" href="donut_index.css">
+		<script src = "donut_index.js"></script> 
+</head>
+<body>
+
+<div id = "vis-container">
+    <svg id = "chart" width="1400" height="1220">
+			
+		</svg>
+</div>	
+
+<script>
+		var donut = donutChart()
+				.width(360)
+				.height(600)
+				.cornerRadius(3)
+				.padAngle(0.015)
+				.variable('Percentage')
+				.category('Cluster');
+		
+		var dropdownChange = function(){
+			var new_cluster_amount = d3.select(this).property('value'),
+					newData = './pipeline_output/percentage/percent_df_'+new_cluster_amount+'.csv'
+					updateDonut(newData)
+
+		}
+
+		var updateDonut = function(filename) {
+			d3.csv(filename, function(error, data) {
+					if (error) throw error;
+					console.log(data)
+					d3.select('#chart').selectAll('g').remove()
+					d3.select('#chart')
+							.datum(data)
+							.call(donut)
+			});
+		}
+		
+		var cluster_amount = [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30]	
+		var dropdown = d3.select("#vis-container")
+				.insert("select", "svg")
+				.on("change",dropdownChange);
+
+		dropdown.selectAll('option')
+				.data(cluster_amount)
+			.enter().append('option')
+				.attr('value', function(d) {return d; })
+				.text(function(d) {return d; });
+		var initialData = './pipeline_output/percentage/percent_df_2.csv'
+		updateDonut(initialData)
+				
+
+</script>
+
+</body>
+
+
+

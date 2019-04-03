@@ -1,0 +1,44 @@
+<head>
+	<script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+
+	<select id="inds">
+		<option value="one" selected="selected">First Letter</option>
+		<option value="two">First 2 Letters</option>
+		<option value="four">First 4 Letters</option>
+		<option value="all">All Letters</option>
+	</select>
+</head>
+
+<body>
+	<div id="contain_all">
+  		
+	</div>
+
+	<script type="text/javascript">
+		var svg = d3.select("#contain_all").append("svg")
+		  .append("g")
+		  .attr("class", "labels")
+
+		d3.csv('labels.csv', function(d){
+		  
+ 			console.log(d)
+			var text = svg.select(".labels").selectAll("text")
+			  .data([1,2,3]);
+
+			text.enter()
+			  .append("text")
+			  .attr("x", 30)
+			  .attr("y", 20)
+			  .text("abc")
+		  
+			  //.attr("y", function(d,i){return i})
+			  //.text(function(d) {return d.second})
+		  
+
+		});
+
+		
+
+	</script>
+</body>
+

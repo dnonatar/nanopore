@@ -1,0 +1,107 @@
+<head>
+	<script type="text/javascript" src="https://d3js.org/d3.v4.min.js"></script>
+  	<script src="https://d3js.org/d3-color.v1.min.js"></script>
+	<script src="https://d3js.org/d3-interpolate.v1.min.js"></script>
+	<script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
+
+	<select id="inds">
+		<option value="one" selected="selected">First Letter</option>
+		<option value="two">First 2 Letters</option>
+		<option value="four">First 4 Letters</option>
+		<option value="all">All Letters</option>
+	</select>
+</head>
+
+<body>
+<div id="contain_all">
+  <div id="label"></div>
+  <div id="vis"></div>
+</div>
+
+<script type="text/javascript">
+
+
+var margin = {top: 50, right: 0, bottom: 100, left: 30}
+var width = 1860-margin.left-margin.right
+var height = 1430-margin.top-margin.bottom
+
+
+var base = d3.select("#vis");
+
+var chart = base.append("canvas")
+  .attr("width", 1200)
+  .attr("height", 700);
+var context = chart.node().getContext("2d");
+
+// Create an in memory only element of type 'custom'
+var detachedContainer = document.createElement("custom");
+
+// Create a d3 selection for the detached container. We won't
+// actually be attaching it to the DOM.
+var dataContainer = d3.select(detachedContainer);
+
+d3.csv("./heatmap_input_df.csv",
+	function(d){
+		return {
+			//convert strings to numbers
+			x: +d.x,
+			y: +d.y,
+			values: +d.values
+		};
+	},
+
+
+	function(error,data) {
+		
+
+	colorScale = d3.scaleSequential(d3.interpolateSpectral).domain(d3.extent(data, function(d) { return d.values; }));
+  
+  var dataBinding = dataContainer.selectAll("custom.rect")
+    .data(data)
+ 
+  dataBinding.enter()
+      .append("custom")
+      .classed("rect", true)
+      .attr("x", function(d){return (d.x)*6+120;})
+      .attr("y", function(d){return (d.y)*6+70;})
+      .attr("size", 4)
+      .attr("fillStyle", function(d) { return colorScale(d.values); })
+      
+
+	  		
+			
+  drawCanvas();
+
+
+});
+
+
+function drawCanvas() {
+
+  // clear canvas
+  context.fillStyle = "#fff";
+  context.rect(0,0,chart.attr("width"),chart.attr("height"));
+  context.fill();
+    
+  var elements = dataContainer.selectAll("custom.rect");
+  elements.each(function(d) {
+    var node = d3.select(this);
+    
+    context.beginPath();
+    context.fillStyle = node.attr("fillStyle");
+    context.rect(node.attr("x"), node.attr("y"), node.attr("size"), node.attr("size"));
+    context.fill();
+    context.font = "15px Verdana";
+    //context.fillText("AA",90,140);
+    //context.fillText("AC",90,340);
+    //context.fillText("AG",90,540);
+    context.fillText("A",90,400)
+    context.closePath();
+    
+  })
+}
+
+
+
+  </script>
+</body>
