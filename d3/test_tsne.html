@@ -1,10 +1,100 @@
 <head>
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src='https://raw.githack.com/karpathy/tsnejs/master/tsne.js'></script>
+
+<style>
+            /* tell the SVG path to be a thin blue line without any area fill */
+
+				path { 
+						stroke-width: 1; fill: none; 
+				} 
+				.line_hover { 
+						stroke: orange; 
+				} 
+				.line {
+            stroke: steelblue; 
+				} 
+				.axis { 
+						shape-rendering: crispEdges; 
+				} 
+				.x.axis line {
+            stroke: lightgrey; 
+				} .x.axis 
+				.minor { stroke-opacity: .5; 
+				} 
+				.x.axis path
+            { display: none; 
+				} 
+				.x.axis text { font-size: 14; 
+				} 
+				.y.axis line, .y.axis
+            path { fill: none; stroke: #000; } .y.axis text { font-size: 14; } .y.axisRight
+            text { fill: orange; } .y.axisLeft text { fill: steelblue; } 
+
+				
+				.button {
+            position: absolute;
+            top: 15px;
+            left: 130px;
+         }
+
+				.viewport {
+            position: absolute;
+            top: 45px;
+            left: 15px;
+            overflow: scroll;
+            width: 560px;
+            height: 600px;
+            background-color: #e8e8e8;
+            border: 1px solid #AAAAAA;
+            border-radius: 4px;
+            box-shadow: inset 1px 1px 6px 2px rgba(0,0,0, .25);
+        }
+
+				.tsne {
+            position: absolute;
+            top: 15px;
+            left: 600px;
+            width: 350px;
+            height: 400px;
+        }
+
+				.raw_signal {
+            position: absolute;
+            top: 415px;
+            left: 580px;
+            width: 350px;
+            height: 400px;
+        }
+
+				div.tooltip {	
+    				position: absolute;			
+    				text-align: center;			
+    				width: 100px;					
+    				height: 58px;					
+    				padding: 2px;				
+    				font: 12px sans-serif;		
+    				background: lightsteelblue;	
+    				border: 0px;		
+   				 	border-radius: 8px;			
+    				pointer-events: none;			
+				}
+</style>
 </head>
 
 <body>
-
+<div class = "button">
+	<form id="sort">
+	<div> Sort by
+		<input type='radio' id="kmer" name="mode" checked>kmer</input> 
+		<input  type='radio' id="median" name="mode">median</input>
+		<input  type='radio' id="max" name="mode">max</input>
+  </div>
+	</form>
+</div>
+<div class = "viewport"></div>
+<div class = "tsne"></div>
+<div class = "raw_signal"></div>
 
 <script type="text/javascript">
 var opt = {epsilon: 10}; // epsilon is learning rate (10 = default)
@@ -14,19 +104,23 @@ var tsne = new tsnejs.tSNE(opt); // create a tSNE instance
 var dropdownChange = function(){
 			var new_kmer = d3.select(this).property('value'),
 					newfile = './data/dist_matrix/'+new_kmer+'.csv'
-					update_tsne(newfile)
+					update_tsne(newfile, new_kmer)
 }
 
-var update_tsne = function(filename) {
+var update_tsne = function(filename, new_kmer) {
 	d3.csv(filename, function(data) {
+			
+			//for(i=0; i<data.columns.length;i++){data.forEach(function(d){ d[data.columns[i]] = +d[data.columns[i]]; });}
+
 			var dists = data.map(obj => Object.values(obj));
+
 			tsne.initDataDist(dists);
 			for(var k = 0; k < 1000; k++) {
   			tsne.step(); // every time you call this, solution gets better
 			}
 			var Y = tsne.getSolution(); 
-		
-			draw_tsne(Y)
+			
+			draw_tsne(Y, new_kmer)
 	})
 }
 
@@ -34,30 +128,24 @@ var dropdown = d3.select("body")
 				.insert("select", "svg")
 				.on("change",dropdownChange);
 
-var kmerValues = ['AACAA','AACAC','AACAG','AACAT','AACCA','AACCC']
-console.log(kmerValues)
+var kmerValues = ['AACAA','AACAC','AACAG','AACAT','AACCA','AACCC','AACCG']
+
 dropdown.selectAll('option')
 				.data(kmerValues)
 			.enter().append('option')
 				.attr('value', function(d) {return d; })
 				.text(function(d) {return d; });
-		var initialData = './data/dist_matrix/AACCC.csv'
+		var initialData = './data/dist_matrix/AACAA.csv'
 		update_tsne(initialData)
 
 
-d3.csv('./data/boxplot_data.csv', function(data) {
-
-		draw_boxplot(data)
-})
-
-
-function draw_tsne(position) {
+function draw_tsne(position, new_kmer) {
 		var width = 600;
-		var height = 600;
-		var padding = 45;
+		var height = 500;
+		var padding = 65;
 		
 		d3.select('#tsne').remove()
-		var svg = d3.select('body')
+		var svg = d3.select('.tsne')
 				.append('svg')
 				.attr("width", width)
         .attr("height", height)
@@ -89,13 +177,99 @@ function draw_tsne(position) {
 				})
 				.attr('cy', function(d) {
 						return yScale(d[1]);
-				}); 			 
+				})
+				.on('click',function(d,i){
+												d3.select(this).style("fill", "steelblue");
+												add_signal(i);
+												//draw_signal(i, new_kmer);
+				})
+				.on('mouseover',function(d,i){
+												
+												//add_signal_hover(i);
+												
+				})
+				.on('mouseout',function(d,i){
+												
+												//remove_signal_hover();
+												
+				})
+					 
 }
 
+// add new signals to data array and then pass it to draw_signal 
+var data = []
+var data_hover = []
+var data_row = []
+function add_signal(row){
+filename = './data/raw_signal/'+'AACAA'+'_signal.csv'
+	d3.csv(filename, function(d){
+					
+					data_row.push(row)
+					data.push(d[row]['values'].split("_").map(Number))
+					
+					draw_signal(data, data_hover)
+	})
+}
 
-function draw_boxplot(data) {
+function add_signal_hover(row){
+filename = './data/raw_signal/'+'AACAA'+'_signal.csv'
+	d3.csv(filename, function(d){
+					data_hover.push(d[row]['values'].split("_").map(Number))
+					draw_signal(data, data_hover)
+	})
+}
+
+function remove_signal_hover(){
+	data_hover.pop()
+	draw_signal(data, data_hover)
+}
+
+var div = d3.select("body").append("div")	
+    .attr("class", "tooltip")				
+    .style("opacity", 0);
+
+d3.csv('./data/boxplot_data.csv', function(data) {
+		
+		function changeBoxplot(){
+			d3.select(".viewport").selectAll("*").remove()
+			var form = document.getElementById("sort")
+			var form_val;
+			for(var i=0; i<form.length; i++){
+      	  if(form[i].checked){
+      	    form_val = form[i].id;}} 
+			
+			draw_boxplot(data, form_val)
+		}
+
+		var dataDim = d3.select("#sort")
+		dataDim.on("change", changeBoxplot)
+		draw_boxplot(data, 'kmer')
+})
+
+function draw_boxplot(data, form_val) {
+		if (form_val == 'median') {
+			data.forEach(function(data){ data['median']= +data['median'];});
+			
+				data.sort(function(a,b) {
+    			return a[form_val] - b[form_val];
+				});
+		}	else if (form_val == 'kmer') {
+			
+			data.sort(function(a,b) {
+    		var x = a[form_val].toLowerCase();
+    		var y = b[form_val].toLowerCase();
+    		return x < y ? -1 : x > y ? 1 : 0;
+			});
+		} else if (form_val == 'max') {
+			data.forEach(function(data){ data['median']= +data['median'];});
+			
+				data.sort(function(a,b) {
+    			return b[form_val] - a[form_val];
+				});
+		}
+		
 		var w = 550
-		var h = 500
+		var h = 7500
 
 		var margin = {
     top: 20,
@@ -104,7 +278,7 @@ function draw_boxplot(data) {
     right: 30
   }
 
-	d3.select('body')
+	d3.select('.viewport')
     .append('svg')
     .attr('height', h)
     .attr('width', w)
@@ -120,7 +294,7 @@ function draw_boxplot(data) {
   const q3Variable = 'q3'
 
 	var xScale = d3.scaleLinear()
-			.domain([0,5000])
+			.domain([0,8000])
 			.range([margin.left, w- margin.right-50])
 
 	/*var yScale = d3.scaleLinear()
@@ -134,17 +308,18 @@ function draw_boxplot(data) {
 	var yScale = d3.scalePoint()
 			.domain(kmerValues)
 			.range([h - margin.bottom, margin.top])
+			.range([20, h])
 
-	var xAxis = d3.axisBottom()
+	/*var xAxis = d3.axisBottom()
 								.scale(xScale)
 								.ticks(10)
-								.tickSize(-470)
+								.tickSize(-470) 
 				
 	d3.select('svg')
 		.append('g')
 		.attr('transform', 'translate(0,480)')
 		.attr('id', 'xAxisG')
-		.call(xAxis)
+		.call(xAxis) */
 
 	var yAxis = d3.axisRight()
 								.scale(yScale)
@@ -168,6 +343,19 @@ function draw_boxplot(data) {
 		.attr(
 			'transform', d => `translate(${xScale(d[medianVariable])},${yScale(d['kmer'])})`
 		)
+		.on("mouseover", function(d) {		
+            div.transition()		
+                .duration(200)		
+                .style("opacity", 1);		
+            div	.html('<strong>'+'median : '+'</strong>'+ d3.format(",.0f")(d.median) + "<br/>" +'<strong>'+'max : '+'</strong>'+d3.format(",.0f")(d.max) + "<br/>"  + '<strong>'+'min : '+'</strong>'+d3.format(",.0f")(d.min))	
+                .style("left", (d3.event.pageX) + "px")		
+                .style("top", (d3.event.pageY - 28) + "px");	
+     				})
+		.on("mouseout", function(d) {		
+            div.transition()		
+                .duration(500)		
+                .style("opacity", 0);	
+        })	
 
 		.each(function(d, i) {
 			d3.select(this)
@@ -223,12 +411,101 @@ function draw_boxplot(data) {
 
 		})
 
-		
-
-
 }
 
+// draw raw signals based on the data passed from add_signal
+//function draw_signal(row, new_kmer) {
+function draw_signal(data,data_hover) {
+	filename = './data/raw_signal/'+'AACAA'+'_signal.csv'
+	d3.csv(filename, function(d){
+					
+					//var data = []
+					//data.push(d[row]['values'].split("_").map(Number))
+					//console.log(data[0])
 
+					var m = [80, 80, 80, 80]; // margins
+        	var w = 700 - m[1] - m[3]; // width
+        	var h = 300 - m[0] - m[2]; // height
+        	 
+        	
+        	// X scale will fit all values from data[] within pixels 0-w
+        	var x_max = 0;
+        	for (var i = data.length - 1; i >= 0; i--) {
+        	    if (data[i].length > x_max) x_max = data[i].length;
+        	};
+        	var x = d3.scaleLinear()
+						.domain([0, x_max])
+						.range([0, w]);
+
+        	// Y scale will fit values from 0-10 within pixels h-0 (Note the inverted domain for the y-scale: bigger is up!)
+        	var min = 0,
+        	    max = 5000; 
+        	for (var i = data.length - 1; i >= 0; i--) {
+        	    if (Math.max.apply(Math, data[i]) > max) max = Math.max.apply(Math, data[i]);
+        	    else if (Math.min.apply(Math, data[i]) < min) min = Math.min.apply(Math, data[i]);
+        	};
+        	//var y = d3.scaleLinear().domain([min, max]).range([h, 0]); 
+					
+        	// automatically determining max range can work something like this
+        	var y = d3.scaleLinear().domain([0, d3.max(data[0])]).range([h, 0]);
+
+        	 // create a line function that can convert data[] into x and y points
+        	var line = d3.line()
+        	// assign the X function to plot our line as we wish
+        	.x(function(d, i) {
+        	    
+        	    // return the X coordinate where we want to plot this datapoint
+        	    return x(i);
+        	}).y(function(d) {
+        	    
+        	    // return the Y coordinate where we want to plot this datapoint
+        	    return y(d);
+        	})
+        	// Add an SVG element with the desired dimensions and margin.
+					d3.select(".raw_signal").selectAll('*').remove()
+        	var graph = d3.select(".raw_signal")
+						.append("svg:svg")
+							.attr("width", w + m[1] + m[3])
+							.attr("height", h + m[0] + m[2])
+							.attr("id", "signal")
+						.append("svg:g")
+							.attr("transform", "translate(" + m[3] + "," + m[0] + ")")
+						
+
+        	// create xAxis
+        	var xAxis = d3.axisBottom()
+						.scale(x)
+						.tickSize(-h)
+						//.tickSubdivide(true);
+
+        	// Add the x-axis.
+        	graph.append("svg:g")
+							.attr("class", "x axis")
+							.attr("transform", "translate(0," + h + ")")
+							.call(xAxis);
+        	
+					// add lines
+        	 // do this AFTER the axes above so that the line is above the tick-lines
+        	for (var i = data.length - 1; i >= 0; i--) {
+        	    graph.append("svg:path")
+									.attr("d", line(data[i]))
+									.attr("class","line")
+									
+        	};  
+					
+					
+					for (var i = data_hover.length - 1; i >= 0; i--) {
+							
+        	    graph.append("svg:path")
+									.attr("d", line(data_hover[i]))
+									.attr("class","line_hover")
+									
+        	};
+					       	
+
+	})
+
+}
 
 </script>
 </body>
