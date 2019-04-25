@@ -53,15 +53,15 @@
 
 				.tsne {
             position: absolute;
-            top: 15px;
+            top: 0px;
             left: 600px;
-            width: 350px;
-            height: 400px;
+            width: 550px;
+            height: 430px;
         }
 
 				.raw_signal {
             position: absolute;
-            top: 415px;
+            top: 430px;
             left: 580px;
             width: 350px;
             height: 400px;
@@ -97,16 +97,19 @@
 <div class = "raw_signal"></div>
 
 <script type="text/javascript">
-var opt = {epsilon: 10}; // epsilon is learning rate (10 = default)
-var tsne = new tsnejs.tSNE(opt); // create a tSNE instance
- 
 
+var current_kmer = 'AACAA'  // initial kmer. will change on dropdown
 var dropdownChange = function(){
 			var new_kmer = d3.select(this).property('value'),
 					newfile = './data/dist_matrix/'+new_kmer+'.csv'
 					update_tsne(newfile, new_kmer)
+			current_kmer = new_kmer
+
 }
 
+var opt = {epsilon: 10}; // epsilon is learning rate (10 = default)
+var tsne = new tsnejs.tSNE(opt); // create a tSNE instance
+ 
 var update_tsne = function(filename, new_kmer) {
 	d3.csv(filename, function(data) {
 			
@@ -115,7 +118,7 @@ var update_tsne = function(filename, new_kmer) {
 			var dists = data.map(obj => Object.values(obj));
 
 			tsne.initDataDist(dists);
-			for(var k = 0; k < 1000; k++) {
+			for(var k = 0; k < 500; k++) {
   			tsne.step(); // every time you call this, solution gets better
 			}
 			var Y = tsne.getSolution(); 
@@ -128,16 +131,21 @@ var dropdown = d3.select("body")
 				.insert("select", "svg")
 				.on("change",dropdownChange);
 
-var kmerValues = ['AACAA','AACAC','AACAG','AACAT','AACCA','AACCC','AACCG']
+var kmerValues = []
+d3.csv('./data/kmer_list.csv', function(data) {
 
-dropdown.selectAll('option')
+	kmerValues = data	
+
+	var kmerValues = data.map(d => d['kmer'])
+
+	dropdown.selectAll('option')
 				.data(kmerValues)
 			.enter().append('option')
 				.attr('value', function(d) {return d; })
 				.text(function(d) {return d; });
 		var initialData = './data/dist_matrix/AACAA.csv'
 		update_tsne(initialData)
-
+})
 
 function draw_tsne(position, new_kmer) {
 		var width = 600;
@@ -171,7 +179,7 @@ function draw_tsne(position, new_kmer) {
 				.attr('y', function(d) {
 						return yScale(d[1]);
 				})
-				.attr('r', 4)
+				.attr('r', 6)
 				.attr('cx', function(d) {
 						return xScale(d[0]);
 				})
@@ -179,49 +187,88 @@ function draw_tsne(position, new_kmer) {
 						return yScale(d[1]);
 				})
 				.on('click',function(d,i){
-												d3.select(this).style("fill", "steelblue");
+												if (d3.select(this).style("fill") == "red") { 
+													d3.select(this).style("fill", "black");
+												}	else {
+													d3.select(this).style("fill", "steelblue");
+												}
+												
 												add_signal(i);
 												//draw_signal(i, new_kmer);
 				})
-				.on('mouseover',function(d,i){
+				.on('mouseover', function(d,i){
+												if (d3.select(this).style("fill") == "steelblue") {
+													d3.select(this).style("fill", "red");
+												} else {
+													d3.select(this).style("fill", "orange");
+												}
 												
-												//add_signal_hover(i);
+												
+												add_signal_hover(i);
+
 												
 				})
-				.on('mouseout',function(d,i){
+				.on('mouseout', function(d,i){
+												//if (d3.select(this).style("fill") == "steelblue") {
+												if (d3.select(this).style("fill") == "orange") {
+													d3.select(this).style("fill", "black");
+												} else if (d3.select(this).style("fill") == "red") {
+													d3.select(this).style("fill", "steelblue");
+												}
 												
-												//remove_signal_hover();
+												remove_signal_hover();
 												
 				})
 					 
 }
+
 
 // add new signals to data array and then pass it to draw_signal 
 var data = []
 var data_hover = []
 var data_row = []
 function add_signal(row){
-filename = './data/raw_signal/'+'AACAA'+'_signal.csv'
+filename = './data/raw_signal/'+current_kmer+'_signal.csv'
 	d3.csv(filename, function(d){
-					
+			if (data_row.includes(row)) {
+					index = data_row.indexOf(row)
+					data_row.splice(index, 1)
+					data.splice(index, 1)
+
+			} else {
 					data_row.push(row)
-					data.push(d[row]['values'].split("_").map(Number))
-					
-					draw_signal(data, data_hover)
+					data.push(d[row]['values'].split("_").map(Number))		
+
+			}
+			
+			draw_signal(data, data_hover)
 	})
 }
 
+var signalToAdd = null;
+
 function add_signal_hover(row){
-filename = './data/raw_signal/'+'AACAA'+'_signal.csv'
+filename = './data/raw_signal/'+current_kmer+'_signal.csv';
+signalToAdd = current_kmer + '_' + row;
+
 	d3.csv(filename, function(d){
-					data_hover.push(d[row]['values'].split("_").map(Number))
-					draw_signal(data, data_hover)
+					d3.selectAll('.line_hover').remove();
+
+					if (signalToAdd == current_kmer + '_' + row)
+					{
+						data_hover.push(d[row]['values'].split("_").map(Number))
+						draw_signal(data, data_hover)
+						
+					}
 	})
 }
 
 function remove_signal_hover(){
-	data_hover.pop()
-	draw_signal(data, data_hover)
+	
+	//draw_signal(data, data_hover)
+	data_hover = []
+	d3.selectAll('.line_hover').remove();
+	signalToAdd=null;
 }
 
 var div = d3.select("body").append("div")	
@@ -251,7 +298,7 @@ function draw_boxplot(data, form_val) {
 			data.forEach(function(data){ data['median']= +data['median'];});
 			
 				data.sort(function(a,b) {
-    			return a[form_val] - b[form_val];
+    			return b[form_val] - a[form_val];
 				});
 		}	else if (form_val == 'kmer') {
 			
@@ -343,13 +390,14 @@ function draw_boxplot(data, form_val) {
 		.attr(
 			'transform', d => `translate(${xScale(d[medianVariable])},${yScale(d['kmer'])})`
 		)
-		.on("mouseover", function(d) {		
+		.on("mouseover", function(d) {
             div.transition()		
                 .duration(200)		
                 .style("opacity", 1);		
             div	.html('<strong>'+'median : '+'</strong>'+ d3.format(",.0f")(d.median) + "<br/>" +'<strong>'+'max : '+'</strong>'+d3.format(",.0f")(d.max) + "<br/>"  + '<strong>'+'min : '+'</strong>'+d3.format(",.0f")(d.min))	
                 .style("left", (d3.event.pageX) + "px")		
-                .style("top", (d3.event.pageY - 28) + "px");	
+                .style("top", (d3.event.pageY - 28) + "px");
+									
      				})
 		.on("mouseout", function(d) {		
             div.transition()		
@@ -414,9 +462,9 @@ function draw_boxplot(data, form_val) {
 }
 
 // draw raw signals based on the data passed from add_signal
-//function draw_signal(row, new_kmer) {
 function draw_signal(data,data_hover) {
-	filename = './data/raw_signal/'+'AACAA'+'_signal.csv'
+	
+	filename = './data/raw_signal/'+current_kmer+'_signal.csv'
 	d3.csv(filename, function(d){
 					
 					//var data = []
@@ -430,8 +478,8 @@ function draw_signal(data,data_hover) {
         	
         	// X scale will fit all values from data[] within pixels 0-w
         	var x_max = 0;
-        	for (var i = data.length - 1; i >= 0; i--) {
-        	    if (data[i].length > x_max) x_max = data[i].length;
+        	for (var i = data_hover.length - 1; i >= 0; i--) {
+        	    if (data_hover[i].length > x_max) x_max = data_hover[i].length;
         	};
         	var x = d3.scaleLinear()
 						.domain([0, x_max])
@@ -440,14 +488,14 @@ function draw_signal(data,data_hover) {
         	// Y scale will fit values from 0-10 within pixels h-0 (Note the inverted domain for the y-scale: bigger is up!)
         	var min = 0,
         	    max = 5000; 
-        	for (var i = data.length - 1; i >= 0; i--) {
-        	    if (Math.max.apply(Math, data[i]) > max) max = Math.max.apply(Math, data[i]);
-        	    else if (Math.min.apply(Math, data[i]) < min) min = Math.min.apply(Math, data[i]);
+        	for (var i = data_hover.length - 1; i >= 0; i--) {
+        	    if (Math.max.apply(Math, data_hover[i]) > max) max = Math.max.apply(Math, data_hover[i]);
+        	    else if (Math.min.apply(Math, data_hover[i]) < min) min = Math.min.apply(Math, data_hover[i]);
         	};
         	//var y = d3.scaleLinear().domain([min, max]).range([h, 0]); 
 					
         	// automatically determining max range can work something like this
-        	var y = d3.scaleLinear().domain([0, d3.max(data[0])]).range([h, 0]);
+        	var y = d3.scaleLinear().domain([0, d3.max(data_hover[0])]).range([h, 0]);
 
         	 // create a line function that can convert data[] into x and y points
         	var line = d3.line()
@@ -490,6 +538,8 @@ function draw_signal(data,data_hover) {
         	    graph.append("svg:path")
 									.attr("d", line(data[i]))
 									.attr("class","line")
+									.on("mouseover",function(d){d3.select(this).style("stroke-width",3)})
+									.on("mouseout",function(d){d3.select(this).style("stroke-width",1)})
 									
         	};  
 					
@@ -502,7 +552,6 @@ function draw_signal(data,data_hover) {
 									
         	};
 					       	
-
 	})
 
 }
