@@ -12,7 +12,7 @@
 				.line_hover { 
 						stroke: orange; stroke-width: 3;
 				} 
-				.line {
+				.line_click {
             stroke: black; 
 				}
 				.line_brush {
@@ -40,12 +40,6 @@
             position: absolute;
             top: 15px;
             left: 130px;
-         }
-
-				.text-input {
-            position: absolute;
-            top: 15px;
-            left: 430px;
          }
 
 				.viewport {
@@ -81,7 +75,7 @@
     				position: absolute;			
     				text-align: center;			
     				width: 100px;					
-    				height: 58px;					
+    				height: 48px;					
     				padding: 2px;				
     				font: 12px sans-serif;		
     				background: lightsteelblue;	
@@ -112,30 +106,11 @@
 	</form>
 </div>
 
-<div class = "text-input">
-	<form name="myform" onSubmit="return handleClick()">
-    <input name="Submit"  type="submit" value="Get t-SNE plot" >
-    <input type="text" id="myVal1" placeholder="Kmer1">
-		<input type="text" id="myVal2" placeholder="Kmer2">
-		<!--<input type="text" id="myVal3" placeholder="Kmer3">
-		<input type="text" id="myVal4" placeholder="Kmer4">-->
-  </form>
-</div>
-
 <div class = "viewport"></div>
 <div class = "tsne"></div>
 <div class = "raw_signal"></div>
 
 <script type="text/javascript">
-
-var current_kmer = 'AACAA'  // initial kmer. will change on dropdown
-var dropdownChange = function(){
-			var new_kmer = d3.select(this).property('value'),
-					newfile = './data/dist_matrix/'+new_kmer+'.csv'
-					update_tsne(newfile, new_kmer)
-			current_kmer = new_kmer
-
-}
 
 var opt = {epsilon: 10}; // epsilon is learning rate (10 = default)
 var tsne = new tsnejs.tSNE(opt); // create a tSNE instance
@@ -159,32 +134,9 @@ var update_tsne = function(filename, new_kmer) {
 	})
 } */
 
-// uncomment to display dropdown menu
-/*var dropdown = d3.select("body")
-				.insert("select", "svg")
-				.on("change",dropdownChange);*/
-
-// get values for the dropdown menu
-var kmerValues = []
-d3.csv('./data/kmer_list.csv', function(data) {
-
-	kmerValues = data	
-
-	var kmerValues = data.map(d => d['kmer'])
-
-	dropdown.selectAll('option')
-				.data(kmerValues)
-			.enter().append('option')
-				.attr('value', function(d) {return d; })
-				.text(function(d) {return d; });
-		var initialData = './data/dist_matrix/AACAA.csv'
-		//update_tsne(initialData)
-})
-
 // draw t-sne
-function draw_tsne(position, kmer1, kmer2) {
-		kmer1_pos = position.slice(0,5)
-		console.log(kmer1_pos)
+function draw_tsne(position, kmer_list) {
+		
 		var width = 600;
 		var height = 500;
 		var padding = 65;
@@ -214,6 +166,18 @@ function draw_tsne(position, kmer1, kmer2) {
 		d3.select('#tsne').append("g")
 				.call(brush)
 
+		d3.select('#tsne').append('g')
+        .append('rect')
+        .attr('class', 'tsne_edges')
+        .attr('x', 0)
+        .attr('y', 0)
+        .attr('height', height)
+        .attr('width', width)
+        .style('fill', 'none')
+        .style('stroke', 'black')
+        .style('stroke-width', '1px')
+				.style('opacity', 1)
+
 		var circles = svg.append("g")
 				.selectAll('circle')
 			  .data(position)
@@ -233,49 +197,51 @@ function draw_tsne(position, kmer1, kmer2) {
 						return yScale(d[1]);
 				})
 				.attr("class", "non_brushed")
-				//.style('fill', function(d) { if (kmer1_pos.includes(d)) {return "blue";} })
 				.style('fill', function(d,i) { 
+											if (kmer_list.length == 2) {	
 												if (i < position.length/2) {
 													return "limegreen";
 												} else {
 													return "royalblue";
 												}
+											} else if (kmer_list.length == 3) {
+												if (i < position.length/3) {
+													return "#1b9e77";
+												} else if(i >= position.length/3 && i < 2*position.length/3) {
+													return "#d95f02";
+												} else {
+													return "#7570b3";
+												}
+											} else if (kmer_list.length == 4) {
+													if (i < position.length/4) {
+													return "#a6cee3";
+												} else if(i >= position.length/4 && i < 2*position.length/4) {
+													return "#1f78b4";
+												} else if(i >= 2*position.length/4 && i < 3*position.length/4) {
+													return "#b2df8a";
+												} else {
+													return "#33a02c";
+												}
+											}
 				})
 				.on('click',function(d,i){
-												if (d3.select(this).style("fill") == "limegreen") { 
-													d3.select(this).style("fill", "darkgreen");
+												if (d3.select(this).attr("r") == "6") { 
+													d3.select(this).attr("r", "8");
 												}	else {
-													d3.select(this).style("fill", "darkblue");
+													d3.select(this).attr("r", "6");
 												}
 												
-												add_signal(i, kmer1, kmer2);
+												add_signal(i, kmer_list);
 												
 				})
-				/*.on('mouseover', function(d,i){
-												if (d3.select(this).style("fill") == "steelblue") {
-													d3.select(this).style("fill", "red");
-												} else {
-													d3.select(this).style("fill", "orange");
-												}*/
-												
-				.on('mouseover', function(d,i){
-													
-												//d3.select(this).style("fill", "red");
-												d3.select(this).attr("r", "10");
-												add_signal_hover(i, kmer1, kmer2);
 				
-												
+				.on('mouseover', function(d,i){
+ 												d3.select(this).attr("r", "10");
+												add_signal_hover(i, kmer_list);
 				})
 				.on('mouseout', function(d,i){
-												//if (d3.select(this).style("fill") == "steelblue") {
-												/*if (d3.select(this).style("fill") == "red" && i < position.length/2) {
-													d3.select(this).style("fill", "limegreen");
-												} else if (d3.select(this).style("fill") == "red" && i > position.length/2) {
-													d3.select(this).style("fill", "royalblue");
-												} */
 												d3.select(this).attr("r", "6");
 												remove_signal_hover();
-												
 				})
 
 		function highlightBrushedCircles() {
@@ -317,7 +283,7 @@ function draw_tsne(position, kmer1, kmer2) {
             d_brushed.forEach(d_each => row_list.push(position.indexOf(d_each)))
 					
         } 
-				add_signal_brush(row_list, kmer1, kmer2)
+				add_signal_brush(row_list, kmer_list)
 		}		
 }
 
@@ -332,100 +298,356 @@ function isBrushed(brush_coords, cx, cy) {
 }
 
 // add new signals to data array and then pass it to draw_signal 
-var data = []
+var data_click = []
 var data_hover = []
 var data_row = []
 var data_brush = []
 
 
-function add_signal_brush(row_list, kmer1, kmer2) {
-	filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
-	filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+function add_signal_brush(row_list, kmer_list) {
+	if (kmer_list.length == 1) {
+		kmer1 = kmer_list[0]
 
-	queue()
-		.defer(d3.csv, filename1)
-		.defer(d3.csv, filename2)
-		.await(add)
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+
+		queue()
+			.defer(d3.csv, filename1)
+			.await(add)
 	
-	function add(error, file1, file2){
-			d = file1.concat(file2)
-			if (data_brush.length >0){
-					data_brush.length = 0
-			}
-			for (i=0;i<row_list.length;i++){
-					row = row_list[i]
-					data_brush.push(d[row]['values'].split("_").map(Number))
-			}
-			
-			console.log(data_brush)			
-			draw_signal(data, data_hover, data_brush)
+		function add(error, file1){
+				d = file1
+				if (data_brush.length >0){
+						data_brush.length = 0
+				}
+				for (i=0;i<row_list.length;i++){
+						row = row_list[i]
+						data_brush.push(d[row]['values'].split("_").map(Number))
+				}
+				
+				draw_signal(data_click, data_hover, data_brush)
+		}
+	} else if (kmer_list.length == 2) {
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+		filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+
+		queue()
+			.defer(d3.csv, filename1)
+			.defer(d3.csv, filename2)
+			.await(add)
 	
-	}
+		function add(error, file1, file2){
+				d = file1.concat(file2)
+				if (data_brush.length >0){
+						data_brush.length = 0
+				}
+				for (i=0;i<row_list.length;i++){
+						row = row_list[i]
+						data_brush.push(d[row]['values'].split("_").map(Number))
+				}
+				
+				draw_signal(data_click, data_hover, data_brush)
+		}
+	}	else if (kmer_list.length == 3) {
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		kmer3 = kmer_list[2]
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+		filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+		filename3 = './data/raw_signal/'+kmer3+'_signal.csv';
+
+		queue()
+			.defer(d3.csv, filename1)
+			.defer(d3.csv, filename2)
+			.defer(d3.csv, filename3)
+			.await(add)
+	
+		function add(error, file1, file2, file3){
+				d = file1.concat(file2).concat(file3)
+				if (data_brush.length >0){
+						data_brush.length = 0
+				}
+				for (i=0;i<row_list.length;i++){
+						row = row_list[i]
+						data_brush.push(d[row]['values'].split("_").map(Number))
+				}
+				
+				draw_signal(data_click, data_hover, data_brush)
+		}
+	}	else if (kmer_list.length == 4) {
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		kmer3 = kmer_list[2]
+		kmer4 = kmer_list[3]
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+		filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+		filename3 = './data/raw_signal/'+kmer3+'_signal.csv';
+		filename4 = './data/raw_signal/'+kmer4+'_signal.csv';
+
+		queue()
+			.defer(d3.csv, filename1)
+			.defer(d3.csv, filename2)
+			.defer(d3.csv, filename3)
+			.defer(d3.csv, filename4)
+			.await(add)
+	
+		function add(error, file1, file2, file3, file4){
+				d = file1.concat(file2).concat(file3).concat(file4)
+				if (data_brush.length >0){
+						data_brush.length = 0
+				}
+				for (i=0;i<row_list.length;i++){
+						row = row_list[i]
+						data_brush.push(d[row]['values'].split("_").map(Number))
+				}
+				
+				draw_signal(data_click, data_hover, data_brush)
+		}
+	}	
+
 }
 
-function add_signal(row, kmer1, kmer2){
-//filename = './data/raw_signal/'+current_kmer+'_signal.csv'
+function add_signal(row, kmer_list){
+	if (kmer_list.length == 1) {
+		kmer1 = kmer_list[0]
 
-filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
-filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
 
-queue()
-	.defer(d3.csv, filename1)
-	.defer(d3.csv, filename2)
-	.await(add)
+		queue()
+			.defer(d3.csv, filename1)
+			.await(add)
 
-	function add(error, file1, file2){
-			d = file1.concat(file2)
+		function add(error, file1){
+				d = file1
 	//d3.csv(filename, function(d){
-			if (data_row.includes(row)) {
-					index = data_row.indexOf(row)
-					data_row.splice(index, 1)
-					data.splice(index, 1)
-
-			} else {
-					data_row.push(row)
-					data.push(d[row]['values'].split("_").map(Number))		
-
-			}
-			
-			draw_signal(data, data_hover, data_brush)
+				if (data_row.includes(row)) {
+						index = data_row.indexOf(row)
+						data_row.splice(index, 1)
+						data_click.splice(index, 1)
+	
+				} else {
+						data_row.push(row)
+						data_click.push(d[row]['values'].split("_").map(Number))		
+				}
+				
+				draw_signal(data_click, data_hover, data_brush)
 	//})
+		}
+	} else if (kmer_list.length == 2) {
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+		filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+
+		queue()
+			.defer(d3.csv, filename1)
+			.defer(d3.csv, filename2)
+			.await(add)
+
+		function add(error, file1, file2){
+				d = file1.concat(file2)
+
+				if (data_row.includes(row)) {
+						index = data_row.indexOf(row)
+						data_row.splice(index, 1)
+						data_click.splice(index, 1)
+	
+				} else {
+						data_row.push(row)
+						data_click.push(d[row]['values'].split("_").map(Number))		
+	
+				}
+				
+				draw_signal(data_click, data_hover, data_brush)
+
+		}
+	} else if (kmer_list.length == 3) {
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		kmer3 = kmer_list[2]
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+		filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+		filename3 = './data/raw_signal/'+kmer3+'_signal.csv';
+		queue()
+			.defer(d3.csv, filename1)
+			.defer(d3.csv, filename2)
+			.defer(d3.csv, filename3)
+			.await(add)
+
+		function add(error, file1, file2, file3){
+				d = file1.concat(file2).concat(file3)
+
+				if (data_row.includes(row)) {
+						index = data_row.indexOf(row)
+						data_row.splice(index, 1)
+						data_click.splice(index, 1)
+	
+				} else {
+						data_row.push(row)
+						data_click.push(d[row]['values'].split("_").map(Number))		
+				}
+				
+				draw_signal(data_click, data_hover, data_brush)
+
+		}
+	} else if (kmer_list.length == 4) {
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		kmer3 = kmer_list[2]
+		kmer4 = kmer_list[3]
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+		filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+		filename3 = './data/raw_signal/'+kmer3+'_signal.csv';
+		filename4 = './data/raw_signal/'+kmer4+'_signal.csv';
+		queue()
+			.defer(d3.csv, filename1)
+			.defer(d3.csv, filename2)
+			.defer(d3.csv, filename3)
+			.defer(d3.csv, filename4)
+			.await(add)
+
+		function add(error, file1, file2, file3, file4){
+				d = file1.concat(file2).concat(file3).concat(file4)
+
+				if (data_row.includes(row)) {
+						index = data_row.indexOf(row)
+						data_row.splice(index, 1)
+						data_click.splice(index, 1)
+	
+				} else {
+						data_row.push(row)
+						data_click.push(d[row]['values'].split("_").map(Number))		
+				}
+				
+				draw_signal(data_click, data_hover, data_brush)
+
+		}
 	}
 }
 
 var signalToAdd = null;
 
-function add_signal_hover(row, kmer1, kmer2){
-//filename = './data/raw_signal/'+current_kmer+'_signal.csv';
-filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
-filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+function add_signal_hover(row, kmer_list){
+	if (kmer_list.length == 1) {
 
-queue()
-	.defer(d3.csv, filename1)
-	.defer(d3.csv, filename2)
-	.await(add)
+		kmer1 = kmer_list[0]
 
-current_kmer = kmer1+'_'+kmer2
-signalToAdd = current_kmer + '_' + row;
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
 
-	function add(error, file1, file2){
-			d = file1.concat(file2)
-	//d3.csv(filename, function(d){
-					d3.selectAll('.line_hover').remove();
+		queue()	
+			.defer(d3.csv, filename1)
+			.await(add)
 
-					if (signalToAdd == current_kmer + '_' + row)
-					{
-						data_hover.push(d[row]['values'].split("_").map(Number))
-						draw_signal(data, data_hover, data_brush)
-						
-					}
-	//})
+		current_kmer = kmer1
+		signalToAdd = current_kmer + '_' + row;
+
+		function add(error, file1){
+				d = file1
+
+						d3.selectAll('.line_hover').remove();
+
+						if (signalToAdd == current_kmer + '_' + row)
+						{
+							data_hover.push(d[row]['values'].split("_").map(Number))
+							draw_signal(data_click, data_hover, data_brush)
+							
+						}
+	
+		}
+	}	else if (kmer_list.length == 2) {
+
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+		filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+
+		queue()	
+			.defer(d3.csv, filename1)
+			.defer(d3.csv, filename2)
+			.await(add)
+
+		current_kmer = kmer1+'_'+kmer2
+		signalToAdd = current_kmer + '_' + row;
+
+		function add(error, file1, file2){
+				d = file1.concat(file2)
+
+						d3.selectAll('.line_hover').remove();
+
+						if (signalToAdd == current_kmer + '_' + row)
+						{
+							data_hover.push(d[row]['values'].split("_").map(Number))
+							draw_signal(data_click, data_hover, data_brush)
+						}
+		}
+	} else if (kmer_list.length == 3) {
+
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		kmer3 = kmer_list[2]
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+		filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+		filename3 = './data/raw_signal/'+kmer3+'_signal.csv';
+
+		queue()	
+			.defer(d3.csv, filename1)
+			.defer(d3.csv, filename2)
+			.defer(d3.csv, filename3)
+			.await(add)
+
+		current_kmer = kmer1+'_'+kmer2+'_'+kmer3
+		signalToAdd = current_kmer + '_' + row;
+
+		function add(error, file1, file2, file3){
+				d = file1.concat(file2).concat(file3)
+
+						d3.selectAll('.line_hover').remove();
+
+						if (signalToAdd == current_kmer + '_' + row)
+						{
+							data_hover.push(d[row]['values'].split("_").map(Number))
+							draw_signal(data_click, data_hover, data_brush)
+						}
+		}
+	} else if (kmer_list.length == 4) {
+
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		kmer3 = kmer_list[2]
+		kmer4 = kmer_list[3]
+		
+		filename1 = './data/raw_signal/'+kmer1+'_signal.csv';
+		filename2 = './data/raw_signal/'+kmer2+'_signal.csv';
+		filename3 = './data/raw_signal/'+kmer3+'_signal.csv';
+		filename4 = './data/raw_signal/'+kmer4+'_signal.csv';
+
+		queue()	
+			.defer(d3.csv, filename1)
+			.defer(d3.csv, filename2)
+			.defer(d3.csv, filename3)
+			.defer(d3.csv, filename4)
+			.await(add)
+
+		current_kmer = kmer1+'_'+kmer2+'_'+kmer3+'_'+kmer4
+		signalToAdd = current_kmer + '_' + row;
+
+		function add(error, file1, file2, file3, file4){
+				d = file1.concat(file2).concat(file3).concat(file4)
+
+						d3.selectAll('.line_hover').remove();
+
+						if (signalToAdd == current_kmer + '_' + row)
+						{
+							data_hover.push(d[row]['values'].split("_").map(Number))
+							draw_signal(data_click, data_hover, data_brush)
+						}
+		}
 	}
 }
 
 function remove_signal_hover(){
 	
-	//draw_signal(data, data_hover)
 	data_hover = []
 	d3.selectAll('.line_hover').remove();
 	signalToAdd=null;
@@ -453,6 +675,7 @@ d3.csv('./data/boxplot_data.csv', function(data) {
 		draw_boxplot(data, 'kmer')
 })
 
+kmer_list = []
 function draw_boxplot(data, form_val) {
 		if (form_val == 'median') {
 			data.forEach(function(data){ data['median']= +data['median'];});
@@ -550,22 +773,47 @@ function draw_boxplot(data, form_val) {
 		.attr(
 			'transform', d => `translate(${xScale(d[medianVariable])},${yScale(d['kmer'])})`
 		)
-		.on("mouseover", function(d) {
-            div.transition()		
-                .duration(200)		
-                .style("opacity", 1);		
-            div	.html('<strong>'+'median : '+'</strong>'+ d3.format(",.0f")(d.median) + "<br/>" +'<strong>'+'max : '+'</strong>'+d3.format(",.0f")(d.max) + "<br/>"  + '<strong>'+'min : '+'</strong>'+d3.format(",.0f")(d.min))	
-                .style("left", (d3.event.pageX) + "px")		
-                .style("top", (d3.event.pageY - 28) + "px");
-									
-     				})
-		.on("mouseout", function(d) {		
-            div.transition()		
-                .duration(500)		
-                .style("opacity", 0);	
-        })	
-
+		
 		.each(function(d, i) {
+			d3.select(this)
+        .append('rect')
+        .attr('class', 'cover')
+        .attr('x', xScale(d[minVariable]) - xScale(d[medianVariable]))
+        .attr('y', -10)
+        .attr('height', 20)
+        .attr('width', 480)
+        .style('fill', 'white')
+        .style('stroke', 'black')
+        .style('stroke-width', '1px')
+				.style('opacity', 0)
+				.on("click", function(d) {
+						if (d3.select(this).style("fill") ==	"orange") {
+            	d3.select(this).style("fill","white")
+							d3.select(this).style("opacity",0)
+							d3.select(this).style("stroke",'black')
+							
+							index = kmer_list.indexOf(d.kmer)
+							kmer_list.splice(index, 1)
+							
+						} else {
+							d3.select(this).style("fill","orange")
+							d3.select(this).style("opacity",0.3)
+							d3.select(this).style("stroke",'none')
+							kmer_list.push(d.kmer)
+
+						}
+
+						if (kmer_list.length == 1) {
+								combine_1_kmer(kmer_list)
+						} else if (kmer_list.length == 2) {
+								combine_2_kmers(kmer_list)
+						} else if (kmer_list.length == 3) {
+								combine_3_kmers(kmer_list)
+						} else if (kmer_list.length == 4) {
+								combine_4_kmers(kmer_list)
+						}
+        })
+
 			d3.select(this)
 				.append('line')
 				.attr('class', 'range')
@@ -606,6 +854,20 @@ function draw_boxplot(data, form_val) {
         .style('fill', 'white')
         .style('stroke', 'black')
         .style('stroke-width', '3px')
+				.on("mouseover", function(d) {
+            div.transition()		
+                .duration(200)		
+                .style("opacity", 1);		
+            div	.html('<strong>'+'median : '+'</strong>'+ d3.format(",.0f")(d.median) + "<br/>" +'<strong>'+'max : '+'</strong>'+d3.format(",.0f")(d.max) + "<br/>"  + '<strong>'+'min : '+'</strong>'+d3.format(",.0f")(d.min))	
+                .style("left", (d3.event.pageX) + "px")		
+                .style("top", (d3.event.pageY - 28) + "px");
+									
+     				})
+		.on("mouseout", function(d) {		
+            div.transition()		
+                .duration(500)		
+                .style("opacity", 0);	
+        })
 
 			d3.select(this)
         .append('line')
@@ -616,29 +878,18 @@ function draw_boxplot(data, form_val) {
         .style('stroke', 'darkgray')
         .style('stroke-width', '4px')
 
-
 		})
 
 }
 
 // draw raw signals based on the data passed from add_signal
 function draw_signal(data_click,data_hover, data_brush) {
-	console.log(data_hover)
-	//filename = './data/raw_signal/'+current_kmer+'_signal.csv'
-
-	filename1 = './data/raw_signal/'+kmer1+'_signal.csv'
-	filename2 = './data/raw_signal/'+kmer2+'_signal.csv'
-	queue()
-		.defer(d3.csv, filename1)
-		.defer(d3.csv, filename2)
-		.await(draw)
-	
-	//d3.csv(filename, function(d){
-	function draw(error, file1, file2){
-					d = file1.concat(file2)
 
 					var data = data_hover.concat(data_click).concat(data_brush)
-					
+					console.log(data)
+					console.log(data_click)
+					console.log(data_hover)
+					console.log(data_brush)
 					var m = [80, 80, 80, 80]; // margins
         	var w = 700 - m[1] - m[3]; // width
         	var h = 300 - m[0] - m[2]; // height
@@ -650,7 +901,7 @@ function draw_signal(data_click,data_hover, data_brush) {
         	    if (data_brush[i].length > x_max) x_max = data_brush[i].length;
         	};*/
         	var x = d3.scaleLinear()
-						.domain([0, 300]) //set max value to fix the x-axis
+						.domain([0, 260]) //set max value to fix the x-axis
 						.range([0, w]);
 
         	// Y scale will fit values from 0-10 within pixels h-0 (Note the inverted domain for the y-scale: bigger is up!)
@@ -709,7 +960,7 @@ function draw_signal(data_click,data_hover, data_brush) {
         	for (var i = data_click.length - 1; i >= 0; i--) {
         	    graph.append("svg:path")
 									.attr("d", line(data_click[i]))
-									.attr("class","line")
+									.attr("class","line_click")
 									.on("mouseover",function(d){d3.select(this).style("stroke-width",3)})
 									.on("mouseout",function(d){d3.select(this).style("stroke-width",1)})
 					};  
@@ -722,7 +973,7 @@ function draw_signal(data_click,data_hover, data_brush) {
 					};
 				
 					// signal plots for the brushed points
-					console.log(data_brush)
+					
 					graph.selectAll(".line")
     					.data(data_brush)
   					.enter().append("path")
@@ -731,37 +982,42 @@ function draw_signal(data_click,data_hover, data_brush) {
 							.on("mouseover",function(d){d3.select(this).style("stroke-width",3)})
 							.on("mouseout",function(d){d3.select(this).style("stroke-width",1)})
 
-
-  //})
-	}
 }
 
-function handleClick(event){
-		kmer1 = document.getElementById("myVal1").value
-		kmer2 = document.getElementById("myVal2").value
-
-
-		// call a function to combine matrices
-		combine_matrices(kmer1, kmer2)
-
-		return false;
-    
+function combine_1_kmer(kmer_list){
+		kmer1 = kmer_list[0]
 		
-		
-}
-
-function combine_matrices(kmer1, kmer2){
 		folder1 = './data/distance_matrices/'+kmer1
-		folder2 = './data/distance_matrices/'+kmer2
-
 		
 		queue()
 		.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer1 + '.csv')
-		.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer2 + '.csv')
-		.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer1 + '.csv')
-		.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer2 + '.csv')
-		
 		.await(combine_csv)
+
+	function combine_csv(error, file1) {
+		if(error) {console.log(error);}
+		
+		// Convert array of objects to array of arrays
+		file1 = file1.map(obj => Object.values(obj));
+		
+		// call update_tsne
+		update_tsne(file1, kmer_list)
+	}
+}
+
+
+function combine_2_kmers(kmer_list){
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+
+		folder1 = './data/distance_matrices/'+kmer1
+		folder2 = './data/distance_matrices/'+kmer2
+
+		queue()
+			.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer1 + '.csv')
+			.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer2 + '.csv')
+			.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer1 + '.csv')
+			.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer2 + '.csv')
+			.await(combine_csv)
 
 	function combine_csv(error, file1, file2, file3, file4) {
 		if(error) {console.log(error);}
@@ -779,14 +1035,125 @@ function combine_matrices(kmer1, kmer2){
 		// row concat
 		combined_matrix = kmer1_row.concat(kmer2_row)
 		
-		console.log(combined_matrix)
-		
 		// call update_tsne
-		update_tsne(combined_matrix, kmer1, kmer2)
+		update_tsne(combined_matrix, kmer_list)
 	}
 }
 
-var update_tsne = function(data, kmer1, kmer2) {
+function combine_3_kmers(kmer_list){
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		kmer3 = kmer_list[2]
+
+		folder1 = './data/distance_matrices/'+kmer1
+		folder2 = './data/distance_matrices/'+kmer2
+		folder3 = './data/distance_matrices/'+kmer3
+
+		queue()
+			.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer1 + '.csv')
+			.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer2 + '.csv')
+			.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer3 + '.csv')
+			.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer1 + '.csv')
+			.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer2 + '.csv')
+			.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer3 + '.csv')
+			.defer(d3.csv, folder3 + '/' + kmer3 + '_' + kmer1 + '.csv')
+			.defer(d3.csv, folder3 + '/' + kmer3 + '_' + kmer2 + '.csv')
+			.defer(d3.csv, folder3 + '/' + kmer3 + '_' + kmer3 + '.csv')
+			.await(combine_csv)
+
+	function combine_csv(error, file1, file2, file3, file4, file5, file6, file7, file8, file9) {
+		if(error) {console.log(error);}
+		
+		// Convert array of objects to array of arrays
+		file1 = file1.map(obj => Object.values(obj));
+		file2 = file2.map(obj => Object.values(obj));
+		file3 = file3.map(obj => Object.values(obj));
+		file4 = file4.map(obj => Object.values(obj));
+		file5 = file5.map(obj => Object.values(obj));
+		file6 = file6.map(obj => Object.values(obj));
+		file7 = file7.map(obj => Object.values(obj));
+		file8 = file8.map(obj => Object.values(obj));
+		file9 = file9.map(obj => Object.values(obj));
+		
+		// column concat
+		kmer1_row = file1.map((value,index) => { return value.concat(file2[index]).concat(file3[index]) });
+		kmer2_row = file4.map((value,index) => { return value.concat(file5[index]).concat(file6[index]) });
+		kmer3_row = file7.map((value,index) => { return value.concat(file8[index]).concat(file9[index]) });
+		// row concat
+		combined_matrix = kmer1_row.concat(kmer2_row).concat(kmer3_row)
+				
+		// call update_tsne
+		update_tsne(combined_matrix, kmer_list)
+	}
+}
+
+function combine_4_kmers(kmer_list){
+		kmer1 = kmer_list[0]
+		kmer2 = kmer_list[1]
+		kmer3 = kmer_list[2]
+		kmer4 = kmer_list[3]
+
+		folder1 = './data/distance_matrices/'+kmer1
+		folder2 = './data/distance_matrices/'+kmer2
+		folder3 = './data/distance_matrices/'+kmer3
+		folder4 = './data/distance_matrices/'+kmer4
+
+		queue()
+			.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer1 + '.csv')
+			.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer2 + '.csv')
+			.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer3 + '.csv')
+			.defer(d3.csv, folder1 + '/' + kmer1 + '_' + kmer4 + '.csv')
+			.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer1 + '.csv')
+			.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer2 + '.csv')
+			.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer3 + '.csv')
+			.defer(d3.csv, folder2 + '/' + kmer2 + '_' + kmer4 + '.csv')
+			.defer(d3.csv, folder3 + '/' + kmer3 + '_' + kmer1 + '.csv')
+			.defer(d3.csv, folder3 + '/' + kmer3 + '_' + kmer2 + '.csv')
+			.defer(d3.csv, folder3 + '/' + kmer3 + '_' + kmer3 + '.csv')
+			.defer(d3.csv, folder3 + '/' + kmer3 + '_' + kmer4 + '.csv')
+			.defer(d3.csv, folder4 + '/' + kmer4 + '_' + kmer1 + '.csv')
+			.defer(d3.csv, folder4 + '/' + kmer4 + '_' + kmer2 + '.csv')
+			.defer(d3.csv, folder4 + '/' + kmer4 + '_' + kmer3 + '.csv')
+			.defer(d3.csv, folder4 + '/' + kmer4 + '_' + kmer4 + '.csv')
+			.await(combine_csv)
+
+	function combine_csv(error, file1, file2, file3, file4, file5, file6, file7, file8, file9, file10, file11, file12, file13, file14, file15, file16) {
+		if(error) {console.log(error);}
+		
+		// Convert array of objects to array of arrays
+		file1 = file1.map(obj => Object.values(obj));
+		file2 = file2.map(obj => Object.values(obj));
+		file3 = file3.map(obj => Object.values(obj));
+		file4 = file4.map(obj => Object.values(obj));
+		file5 = file5.map(obj => Object.values(obj));
+		file6 = file6.map(obj => Object.values(obj));
+		file7 = file7.map(obj => Object.values(obj));
+		file8 = file8.map(obj => Object.values(obj));
+		file9 = file9.map(obj => Object.values(obj));
+		file10 = file10.map(obj => Object.values(obj));
+		file11 = file11.map(obj => Object.values(obj));
+		file12 = file12.map(obj => Object.values(obj));
+		file13 = file13.map(obj => Object.values(obj));
+		file14 = file14.map(obj => Object.values(obj));
+		file15 = file15.map(obj => Object.values(obj));
+		file16 = file16.map(obj => Object.values(obj));
+		
+		
+		// column concat
+		kmer1_row = file1.map((value,index) => { return value.concat(file2[index]).concat(file3[index]).concat(file4[index]) });
+		kmer2_row = file5.map((value,index) => { return value.concat(file6[index]).concat(file7[index]).concat(file8[index]) });
+		kmer3_row = file9.map((value,index) => { return value.concat(file10[index]).concat(file11[index]).concat(file12[index]) });
+		kmer4_row = file13.map((value,index) => { return value.concat(file14[index]).concat(file15[index]).concat(file16[index]) });
+		// row concat
+		combined_matrix = kmer1_row.concat(kmer2_row).concat(kmer3_row).concat(kmer4_row)
+				
+		// call update_tsne
+		update_tsne(combined_matrix, kmer_list)
+	}
+}
+
+
+var update_tsne = function(data, kmer_list) {
 	
 			
 			//for(i=0; i<data.columns.length;i++){data.forEach(function(d){ d[data.columns[i]] = +d[data.columns[i]]; });}
@@ -799,7 +1166,7 @@ var update_tsne = function(data, kmer1, kmer2) {
 			}
 			var Y = tsne.getSolution(); 
 			
-			draw_tsne(Y, kmer1, kmer2)
+			draw_tsne(Y, kmer_list)
 	
 }
 
