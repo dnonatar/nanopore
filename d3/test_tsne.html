@@ -185,24 +185,6 @@ function handleClick(event){
 var opt = {epsilon: 10}; // epsilon is learning rate (10 = default)
 var tsne = new tsnejs.tSNE(opt); // create a tSNE instance
 
-// get positions of the t-sne plot before passing it to draw_tsne
-/* 
-var update_tsne = function(filename, new_kmer) {
-	d3.csv(filename, function(data) {
-			
-			//for(i=0; i<data.columns.length;i++){data.forEach(function(d){ d[data.columns[i]] = +d[data.columns[i]]; });}
-
-			var dists = data.map(obj => Object.values(obj));
-
-			tsne.initDataDist(dists);
-			for(var k = 0; k < 500; k++) {
-  			tsne.step(); // every time you call this, solution gets better
-			}
-			var Y = tsne.getSolution(); 
-			
-			draw_tsne(Y)
-	})
-} */
 
 // draw t-sne
 function draw_tsne(position, kmer_list) {
@@ -269,36 +251,6 @@ function draw_tsne(position, kmer_list) {
 						return yScale(d[1]);
 				})
 				.attr("class", "non_brushed")
-				/*.style('fill', function(d,i) { 
-											if (kmer_list.length == 1) {
-												return "#a6cee3";
-											
-											} else if (kmer_list.length == 2) {	
-												if (i < position.length/2) {
-													return "#a6cee3";
-												} else {
-													return "#b2df8a";
-												}
-											} else if (kmer_list.length == 3) {
-												if (i < position.length/3) {
-													return "#a6cee3";
-												} else if(i >= position.length/3 && i < 2*position.length/3) {
-													return "#b2df8a";
-												} else {
-													return "#1f78b4";
-												}
-											} else if (kmer_list.length == 4) {
-													if (i < position.length/4) {
-													return "#a6cee3";
-												} else if(i >= position.length/4 && i < 2*position.length/4) {
-													return "#b2df8a";
-												} else if(i >= 2*position.length/4 && i < 3*position.length/4) {
-													return "#1f78b4";
-												} else {
-													return "#33a02c";
-												}
-											}*/
-
 				.style('fill', function(d,i) { 
 											if (kmer_list.length == 1) {
 												return tsne_colors[0];
@@ -781,7 +733,9 @@ var div = d3.select("body").append("div")
 d3.csv('./data/boxplot_data.csv', function(data) {
 		
 		function changeBoxplot(){
+
 			kmer_list = []
+			box_colors = ["rgb(51, 160, 44)","rgb(31, 120, 180)","rgb(178, 223, 138)","rgb(166, 206, 227)"]  //reset when changing sort type
 			d3.select('#tsne').selectAll('circle').remove()
 			d3.select(".viewport").selectAll("*").remove()
 			var form = document.getElementById("sort")
@@ -910,22 +864,7 @@ function draw_boxplot(data, form_val) {
         .style('stroke', 'black')
         .style('stroke-width', '1px')
 				.style('opacity', 0)
-				.on("click", function(d) {
-						/*if (d3.select(this).style("fill") ==	"orange") {
-            	d3.select(this).style("fill","white")
-							d3.select(this).style("opacity",0)
-							d3.select(this).style("stroke",'black')
-							
-							index = kmer_list.indexOf(d.kmer)
-							kmer_list.splice(index, 1)
-							
-						} else {
-							d3.select(this).style("fill","orange")
-							d3.select(this).style("opacity",0.3)
-							d3.select(this).style("stroke",'none')
-							kmer_list.push(d.kmer)
-						}*/
-					
+				.on("click", function(d) {				
 					
 					if (d3.select(this).style("fill") ==	"white") {
 							kmer_list.push(d.kmer)
@@ -934,8 +873,6 @@ function draw_boxplot(data, form_val) {
 							d3.select(this).style("fill",box_colors[box_colors.length-1])
 							tsne_colors.push(box_colors[box_colors.length-1])	
 							box_colors.pop()						
-							console.log(box_colors)
-							console.log(tsne_colors)
 							
 					} else {
 							box_colors.push(d3.select(this).style("fill"))
@@ -945,56 +882,8 @@ function draw_boxplot(data, form_val) {
 							d3.select(this).style("stroke",'black')
 							index = kmer_list.indexOf(d.kmer)
 							kmer_list.splice(index, 1)
-							//tsne_colors.pop()
 							
-							console.log(box_colors)
-							console.log(tsne_colors)
 					}
-
-					/*				
-					if (d3.select(this).style("fill") ==	"white") {
-							
-							kmer_list.push(d.kmer)
-							console.log(kmer_list)
-						if (kmer_list.length == 1) {
-								d3.select(this).style("opacity",0.3)
-								d3.select(this).style("stroke",'none')
-								d3.select(this).style("fill","#a6cee3")
-								
-						}	else if (kmer_list.length == 2) {
-								
-								
-									d3.select(this).style("opacity",0.3)
-									d3.select(this).style("stroke",'none')
-									d3.select(this).style("fill","#b2df8a")
-									
-						} else if (kmer_list.length == 3) {
-								
-									d3.select(this).style("opacity",0.3)
-									d3.select(this).style("stroke",'none')
-									d3.select(this).style("fill","#1f78b4")
-
-						} else if (kmer_list.length == 4) {
-								
-								
-									d3.select(this).style("opacity",0.3)
-									d3.select(this).style("stroke",'none')
-									d3.select(this).style("fill","#33a02c")
-								
-						} else {
-									d3.select(this).style("opacity",0.3)
-									d3.select(this).style("stroke",'none')
-									d3.select(this).style("fill","orange")
-						}
-
-					} else {
-							d3.select(this).style("fill","white")
-							d3.select(this).style("opacity",0)
-							d3.select(this).style("stroke",'black')
-							index = kmer_list.indexOf(d.kmer)
-							kmer_list.splice(index, 1)
-					}
-					*/
 
 						if (kmer_list.length == 1) {
 								combine_1_kmer(kmer_list)
@@ -1344,7 +1233,7 @@ function combine_4_kmers(kmer_list){
 	}
 }
 
-
+// get positions of the t-sne plot before passing it to draw_tsne
 var update_tsne = function(data, kmer_list) {
 	
 			
