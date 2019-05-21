@@ -16,7 +16,8 @@
             stroke: black; 
 				}
 				.line_brush {
-            stroke: black; 
+            stroke: black;
+						opacity : 0.5;
 				}  
 				.axis { 
 						shape-rendering: crispEdges; 
@@ -89,7 +90,7 @@
         }
 
         .non_brushed {
-            opacity: 0.6;
+            opacity: 0.7;
         }
 
 				.text-input {
@@ -113,8 +114,8 @@
 </div>
 
 <div class = "text-input">
-		<form name="myform" onSubmit="return handleClick()">
-	    <input name="Submit"  type="submit" value="Filter Boxplots" >
+		<form name="myform" onkeyup="return handleClick()">
+	    <!--<input name="Submit"  type="submit" value="Filter Boxplots" >-->
 	    <input type="text" id="myVal1" placeholder="Partial or Full Kmer">
 		</form>
 	</div>
@@ -132,7 +133,20 @@ function handleClick(event){
 	kmer_list = []
 	d3.select('#tsne').selectAll('circle').remove()
 	text = document.getElementById("myVal1").value
-	
+	console.log(text)
+
+	if (text.length == 0) {
+		text = '*****'
+	} else if (text.length == 1) {
+		text = text + '****'
+	} else if (text.length == 2) {
+		text = text + '***'
+	}	else if (text.length == 3) {
+		text = text + '**'
+	} else if (text.length == 4) {
+		text = text + '*'
+	}
+
 	d3.csv('./data/boxplot_data.csv', function(data) {
 		var kmerValues = data.map(d => d['kmer'])
 		
@@ -1242,7 +1256,7 @@ var update_tsne = function(data, kmer_list) {
 			var dists = data.map(obj => Object.values(obj));
 
 			tsne.initDataDist(dists);
-			for(var k = 0; k < 500; k++) {
+			for(var k = 0; k < 250; k++) {
   			tsne.step(); // every time you call this, solution gets better
 			}
 			var Y = tsne.getSolution(); 
