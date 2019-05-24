@@ -55,13 +55,31 @@
             left: 15px;
             overflow: auto;
             width: 360px;
-            height: 600px;
+            height: 450px;
+            background-color: #e8e8e8;
+            border: 1px solid #AAAAAA;
+            border-radius: 4px;
+            box-shadow: inset 1px 1px 6px 2px rgba(0,0,0, .25);
+        }
+				
+				.viewport_selected {
+            position: absolute;
+            top: 530px;
+            left: 15px;
+            overflow: auto;
+            width: 360px;
+            height: 120px;
             background-color: #e8e8e8;
             border: 1px solid #AAAAAA;
             border-radius: 4px;
             box-shadow: inset 1px 1px 6px 2px rgba(0,0,0, .25);
         }
 
+				.viewport_selected_text {
+						position: absolute;
+						top: 490px;
+            left: 15px;
+				}
 				.tsne {
             position: absolute;
             top: 250px;
@@ -129,12 +147,16 @@
 </div>
 
 <div class = "text-input">
-		<form name="myform" onkeyup="return handleClick()">
+		<form name="myform" onkeyup="return handleType()">
 	    <input type="text" id="myVal1" placeholder="Partial or Full Kmer">
 		</form>
 	</div>
 
 <div class = "viewport"></div>
+<div class = "viewport_selected_text">
+	<p><b>Selected Kmers</b></p>
+</div>
+<div class = "viewport_selected"></div>
 <div class = "tsne">
 <!--<svg width="500" height="500">
   <rect width="400" height="400" style="fill:none;stroke-width:1;stroke:rgb(0,0,0)" />
@@ -154,10 +176,10 @@ function clear_ID() {
 	d3.select(".read_ID").selectAll('*').remove()
 }
 
-function handleClick(event){
+function handleType(event){
 	kmer_list = []
-	d3.select('#tsne').selectAll('circle').remove()
-	d3.selectAll('.line_click').remove()
+	//d3.select('#tsne').selectAll('circle').remove()
+	//d3.selectAll('.line_click').remove()
 	text = document.getElementById("myVal1").value
 
 	if (text.length == 0) {
@@ -204,16 +226,21 @@ function handleClick(event){
 		}
 
 		filtered_kmers = kmerValues.filter(matching)
-		
+
 		filtered_data = []
 		for (i=0;i<256;i++) {
 			if(filtered_kmers.includes(data[i]['kmer']) ){
 				filtered_data.push(data[i])
 			}
 		}
+		var form = document.getElementById("sort")
+			var form_val;
+			for(var i=0; i<form.length; i++){
+      	  if(form[i].checked){
+      	    form_val = form[i].id;}} 
 
 		d3.select(".viewport").selectAll("*").remove()
-		draw_boxplot(filtered_data, 'kmer')
+		draw_boxplot(filtered_data, form_val)
 	})
 	
 	// return false prevents the page from reloading after submitting		
@@ -625,7 +652,7 @@ function add_signal(row, kmer_list){
 
 		function add(error, file1){
 				d = file1
-	//d3.csv(filename, function(d){
+
 				if (data_row.includes(row)) {
 						index = data_row.indexOf(row)
 						data_row.splice(index, 1)
@@ -637,7 +664,6 @@ function add_signal(row, kmer_list){
 				}
 				
 				draw_signal(data_click, data_hover, data_brush)
-	//})
 		}
 	} else if (kmer_list.length == 2) {
 		kmer1 = kmer_list[0]
@@ -917,7 +943,7 @@ function draw_boxplot(data, form_val) {
     bottom: 20,
     left: 20,
     right: 30
-  }
+  	}
 
 	d3.select('.viewport')
     .append('svg')
@@ -1004,18 +1030,30 @@ function draw_boxplot(data, form_val) {
 							d3.select(this).style("stroke",'none')
 							d3.select(this).style("fill",box_colors[box_colors.length-1])
 							tsne_colors.push(box_colors[box_colors.length-1])	
-							box_colors.pop()						
+							box_colors.pop()
 							
-					} else {
-							box_colors.push(d3.select(this).style("fill"))
-							tsne_colors.splice(tsne_colors.indexOf(d3.select(this).style("fill")),1)
-							d3.select(this).style("fill","white")
-							d3.select(this).style("opacity",0)
-							d3.select(this).style("stroke",'black')
-							index = kmer_list.indexOf(d.kmer)
-							kmer_list.splice(index, 1)
-							
-					}
+							// remove selected boxplot from the current viewport
+							index = kmerValues.indexOf(d.kmer)
+							kmerValues.splice(index, 1)
+							filtered_data = []
+							for (i=0;i<data.length;i++) {
+								if(kmerValues.includes(data[i]['kmer']) ){
+								filtered_data.push(data[i])
+								}
+							}
+							var form = document.getElementById("sort")
+							var form_val;
+							for(var i=0; i<form.length; i++){
+      	  			if(form[i].checked){
+      	    			form_val = form[i].id;
+								}
+							} 
+
+							d3.select(".viewport").selectAll("*").remove()
+							draw_boxplot(filtered_data, form_val)						
+							draw_clicked_boxplot(kmer_list, tsne_colors, kmerValues)
+
+					} 
 
 						if (kmer_list.length == 1) {
 								combine_1_kmer(kmer_list)
@@ -1028,11 +1066,8 @@ function draw_boxplot(data, form_val) {
 						} else{
 								d3.select('#tsne').selectAll('circle').remove()
 						}
-
-					
-        })
-
 			
+        })
 
 			d3.select(this)
 				.append('line')
@@ -1102,6 +1137,227 @@ function draw_boxplot(data, form_val) {
 		})
 
 }
+
+// for selected kmers
+function draw_clicked_boxplot(clicked_kmers, clicked_colors, kmerValues){
+	viewport_kmers = kmerValues
+
+	d3.select('.viewport_selected').selectAll('*').remove()
+	d3.csv('./data/boxplot_data.csv', function(data) {
+		all_data = data
+		clicked_data = []
+		for (i=0;i<256;i++) {
+			if(clicked_kmers.includes(data[i]['kmer']) ){
+				clicked_data.push(data[i])
+			}
+		}
+		data = clicked_data
+		kmerValues = clicked_kmers
+
+		var w = 350
+		var h = 7500*clicked_data.length /256
+
+		var margin = {
+    top: 20,
+    bottom: 20,
+    left: 20,
+    right: 30
+  	}
+
+	d3.select('.viewport_selected')
+    .append('svg')
+    .attr('height', h)
+    .attr('width', w)
+
+	var catVariable = 'order'
+	var catValues = data.map(d => Number(d[catVariable]))
+	var kmerValues = data.map(d => d['kmer'])
+
+	const minVariable = 'min'
+  const maxVariable = 'max'
+  const medianVariable = 'median'
+  const q1Variable = 'q1'
+  const q3Variable = 'q3'
+
+	var xScale = d3.scaleLinear()
+			.domain([0,8000])
+			.range([margin.left, w- margin.right-50])
+
+	/*var yScale = d3.scaleLinear()
+			.domain([
+				Number(d3.max(data, d => d[catVariable])) + 1,
+				Number(d3.min(data, d => d[catVariable])) - 1
+			])
+			.range([h - margin.bottom, margin.top])	
+  */
+	
+	var yScale = d3.scalePoint()
+			.domain(kmerValues)
+			.range([margin.top,h - margin.bottom])
+
+	/*var xAxis = d3.axisBottom()
+								.scale(xScale)
+								.ticks(10)
+								.tickSize(-470) 
+				
+	d3.select('svg')
+		.append('g')
+		.attr('transform', 'translate(0,480)')
+		.attr('id', 'xAxisG')
+		.call(xAxis) */
+
+	var yAxis = d3.axisRight()
+								.scale(yScale)
+								.tickSize(-470)
+    						//.tickValues(catValues)
+								//.tickValues(kmerValues)
+								
+	
+	d3.select('.viewport_selected').select('svg')
+		.append('g')
+		.attr('transform', 'translate(300,0)')
+		.attr('id', 'yAxisG')
+		.call(yAxis)
+
+	d3.select('.viewport_selected').select('svg')
+		.selectAll('g.box')
+		.data(data)
+		.enter()
+		.append('g')
+		.attr('class', 'box')
+		.attr(
+			'transform', d => `translate(${xScale(d[medianVariable])},${yScale(d['kmer'])})`
+		)
+		
+		.each(function(d, i) {
+			d3.select(this)
+        .append('rect')
+        //.attr('class', 'cover')
+        .attr('x', xScale(d[minVariable]) - xScale(d[medianVariable]))
+        .attr('y', -10)
+        .attr('height', 20)
+        .attr('width', 480)
+        .style('fill', clicked_colors[i])
+        .style('stroke', 'none')
+        .style('stroke-width', '1px')
+				.style('opacity', 0.3)
+				.on("click", function(d) {				
+							box_colors.push(d3.select(this).style("fill"))
+							tsne_colors.splice(tsne_colors.indexOf(d3.select(this).style("fill")),1)
+							
+							index = kmer_list.indexOf(d.kmer)
+							kmer_list.splice(index, 1)
+
+							kmerValues = viewport_kmers
+							kmerValues.push(d.kmer)
+							console.log(kmerValues)
+							draw_clicked_boxplot(kmer_list, tsne_colors, kmerValues)
+							
+							filtered_data = []
+							for (i=0;i<all_data.length;i++) {
+								if(kmerValues.includes(all_data[i]['kmer']) ){
+								filtered_data.push(all_data[i])
+								}
+							}
+							console.log(all_data)
+							console.log(filtered_data)
+							var form = document.getElementById("sort")
+							var form_val;
+							for(var i=0; i<form.length; i++){
+      	  			if(form[i].checked){
+      	    			form_val = form[i].id;
+								}
+							} 
+
+							d3.select(".viewport").selectAll("*").remove()
+							draw_boxplot(filtered_data, form_val)
+					
+
+						if (kmer_list.length == 1) {
+								combine_1_kmer(kmer_list)
+						} else if (kmer_list.length == 2) {
+								combine_2_kmers(kmer_list)
+						} else if (kmer_list.length == 3) {
+								combine_3_kmers(kmer_list)
+						} else if (kmer_list.length == 4) {
+								combine_4_kmers(kmer_list)
+						} else{
+								d3.select('#tsne').selectAll('circle').remove()
+						}
+			
+        })
+
+			d3.select(this)
+				.append('line')
+				.attr('class', 'range')
+				.attr('x1', xScale(d[maxVariable]) - xScale(d[medianVariable]))
+        .attr('x2', xScale(d[minVariable]) - xScale(d[medianVariable]))
+        .attr('y1', 0)
+        .attr('y2', 0)
+        .style('stroke', 'black')
+        .style('stroke-width', '3px')
+
+			d3.select(this)
+        .append('line')
+        .attr('class', 'max')
+        .attr('x1', xScale(d[maxVariable]) - xScale(d[medianVariable]))
+        .attr('x2', xScale(d[maxVariable]) - xScale(d[medianVariable]))
+        .attr('y1', -10)
+        .attr('y2', 10)
+        .style('stroke', 'black')
+        .style('stroke-width', '3px')			
+
+			d3.select(this)
+				.append('line')
+        .attr('class', 'min')
+        .attr('x1', xScale(d[minVariable]) - xScale(d[medianVariable]))
+        .attr('x2', xScale(d[minVariable]) - xScale(d[medianVariable]))
+        .attr('y1', -10)
+        .attr('y2', 10)
+        .style('stroke', 'black')
+        .style('stroke-width', '3px')
+
+			d3.select(this)
+        .append('rect')
+        .attr('class', 'range')
+        .attr('x', xScale(d[q1Variable]) - xScale(d[medianVariable]))
+        .attr('y', -10)
+        .attr('height', 20)
+        .attr('width', xScale(d[q3Variable]) - xScale(d[q1Variable]))
+        .style('fill', 'white')
+        .style('stroke', 'black')
+        .style('stroke-width', '3px')
+				.on("mouseover", function(d) {
+            div.transition()		
+                .duration(200)		
+                .style("opacity", 1);		
+            div	.html('<strong>'+'median : '+'</strong>'+ d3.format(",.0f")(d.median) + "<br/>" +'<strong>'+'max : '+'</strong>'+d3.format(",.0f")(d.max) + "<br/>"  + '<strong>'+'min : '+'</strong>'+d3.format(",.0f")(d.min))	
+                .style("left", (d3.event.pageX) + "px")		
+                .style("top", (d3.event.pageY - 28) + "px");
+						d3.select(this).style('fill', 'yellow')			
+     				})
+		.on("mouseout", function(d) {		
+            div.transition()		
+                .duration(500)		
+                .style("opacity", 0);
+				d3.select(this).style('fill', 'white')	
+        })
+
+			d3.select(this)
+        .append('line')
+        .attr('x1', 0)
+        .attr('x2', 0)
+        .attr('y1', -10)
+        .attr('y2', 10)
+        .style('stroke', 'darkgray')
+        .style('stroke-width', '4px')
+
+		})
+
+
+	})
+}
+
 
 // draw raw signals based on the data passed from add_signal
 function draw_signal(data_click,data_hover, data_brush) {
