@@ -2,6 +2,7 @@
 <script src="https://d3js.org/d3.v4.min.js"></script>
 <script src='https://raw.githack.com/karpathy/tsnejs/master/tsne.js'></script>
 <script src="http://d3js.org/queue.v1.min.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
 
 <style>
             /* tell the SVG path to be a thin blue line without any area fill */
@@ -10,7 +11,7 @@
 						stroke-width: 1; fill: none; 
 				} 
 				.line_hover { 
-						stroke: orange; stroke-width: 3;
+						stroke: blue; stroke-width: 3;
 				} 
 				.line_click {
             stroke: black; 
@@ -177,7 +178,8 @@ function clear_ID() {
 }
 
 function handleType(event){
-	kmer_list = []
+	//kmer_list = []
+	console.log(kmer_list)
 	//d3.select('#tsne').selectAll('circle').remove()
 	//d3.selectAll('.line_click').remove()
 	text = document.getElementById("myVal1").value
@@ -226,6 +228,14 @@ function handleType(event){
 		}
 
 		filtered_kmers = kmerValues.filter(matching)
+		
+    // exclude selected kmered from viewport after typeing
+		for (i=0;i<kmer_list.length;i++){
+			index = filtered_kmers.indexOf(kmer_list[i])
+			filtered_kmers.splice(index, 1)
+			console.log(index)
+		}
+
 
 		filtered_data = []
 		for (i=0;i<256;i++) {
@@ -888,12 +898,11 @@ var div = d3.select("body").append("div")
     .attr("class", "tooltip")				
     .style("opacity", 0);
 
+box_colors = ["rgb(51, 160, 44)","rgb(31, 120, 180)","rgb(178, 223, 138)","rgb(166, 206, 227)"]  //reset when changing sort type
 d3.csv('./data/boxplot_data.csv', function(data) {
 		
 		function changeBoxplot(){
 
-			kmer_list = []
-			box_colors = ["rgb(51, 160, 44)","rgb(31, 120, 180)","rgb(178, 223, 138)","rgb(166, 206, 227)"]  //reset when changing sort type
 			d3.select('#tsne').selectAll('circle').remove()
 			d3.select(".viewport").selectAll("*").remove()
 			var form = document.getElementById("sort")
@@ -1250,7 +1259,7 @@ function draw_clicked_boxplot(clicked_kmers, clicked_colors, kmerValues){
 
 							kmerValues = viewport_kmers
 							kmerValues.push(d.kmer)
-							console.log(kmerValues)
+
 							draw_clicked_boxplot(kmer_list, tsne_colors, kmerValues)
 							
 							filtered_data = []
@@ -1259,8 +1268,7 @@ function draw_clicked_boxplot(clicked_kmers, clicked_colors, kmerValues){
 								filtered_data.push(all_data[i])
 								}
 							}
-							console.log(all_data)
-							console.log(filtered_data)
+							
 							var form = document.getElementById("sort")
 							var form_val;
 							for(var i=0; i<form.length; i++){
@@ -1445,7 +1453,9 @@ function draw_signal(data_click,data_hover, data_brush) {
 									.attr("d", line(data_hover[i]))
 									.attr("class","line_hover")
 					};
-				
+
+					
+					
 					// signal plots for the brushed points
 					
 					graph.selectAll(".line")
@@ -1453,10 +1463,18 @@ function draw_signal(data_click,data_hover, data_brush) {
   					.enter().append("path")
     					.attr("d", line)
     					.attr("class", "line_brush")
+							.attr("id", function(d,i){return "line_brush_"+d; })  ////
 							.on("mouseover",function(d){d3.select(this).style("stroke-width",3)})
 							.on("mouseout",function(d){d3.select(this).style("stroke-width",1)})
 
 }
+
+function putNodeOnTop(node) {
+   var n = jQuery(node);
+   n.parent().append(n.detach());
+}
+
+putNodeOnTop(d3.select(".line_hover").node());
 
 function combine_1_kmer(kmer_list){
 		kmer1 = kmer_list[0]
